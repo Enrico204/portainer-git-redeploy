@@ -3,7 +3,11 @@
 A very small utility for triggering the Git re-deploy for stacks in Portainer
 via CLI. It was meant to be used in CD pipelines.
 
-## Usage example
+## Usage (OCI/docker container)
+
+A container image is available on Docker Hub: `docker.io/enrico204/portainer-git-redeploy`
+
+## Usage (executable)
 
 Example with environment variables:
 ```shell
