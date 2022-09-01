@@ -22,10 +22,12 @@ Example using CLI options (**note that writing your access token to the CLI is a
 $ portainer-git-redeploy -url https://portainer:9443 -stack-id 1 -access-token abcdef
 ```
 
-To use a custom certificate file, use `SSL_CERT_FILE`:
+To use a custom certificate file, use `PORTAINER_SSL_CERT_FILE` to appending a
+certificate to the system CA store, or `SSL_CERT_FILE` for replacing the whole
+CA store:
 
 ```shell
-$ export SSL_CERT_FILE=~/certificate.pem
+$ export PORTAINER_SSL_CERT_FILE=~/certificate.pem
 $ portainer-git-redeploy -url https://portainer:9443 -stack-id 1 -access-token abcdef
 ```
 

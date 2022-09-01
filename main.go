@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -43,6 +46,7 @@ func main() {
 	var apiKey = flag.String("access-token", "", "Portainer Access Token (UNSAFE, use environment variable PORTAINER_ACCESS_TOKEN)")
 	var stackId = flag.Int64("stack-id", 0, "Portainer Stack ID (env: PORTAINER_STACK_ID)")
 	var timeout = flag.Duration("timeout", 120*time.Second, "HTTP timeout (env: PORTAINER_HTTP_TIMEOUT)")
+	var tlsCert = flag.String("tls-cert", "", "Use an additional TLS certificate / CA as trusted (env: PORTAINER_SSL_CERT_FILE)")
 
 	flag.Parse()
 
@@ -64,13 +68,17 @@ func main() {
 			panic(err)
 		}
 	}
+	if os.Getenv("PORTAINER_SSL_CERT_FILE") != "" {
+		*tlsCert = os.Getenv("PORTAINER_SSL_CERT_FILE")
+	}
 	if *portainerURL == "" || *apiKey == "" || *stackId == 0 {
 		flag.PrintDefaults()
 		return
 	}
 
-	var httpc = &http.Client{
-		Timeout: *timeout,
+	httpc, err := newClient(*timeout, *tlsCert)
+	if err != nil {
+		panic(err)
 	}
 
 	stack, err := getStack(httpc, *portainerURL, *apiKey, *stackId)
@@ -88,6 +96,36 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func newClient(timeout time.Duration, tlsCert string) (*http.Client, error) {
+	rootCAs, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, err
+	} else if rootCAs == nil {
+		// Empty root CA?
+		rootCAs = x509.NewCertPool()
+	}
+
+	if tlsCert != "" {
+		certs, err := ioutil.ReadFile(tlsCert)
+		if err != nil {
+			return nil, err
+		}
+
+		if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+			return nil, errors.New("no certificate found to append")
+		}
+	}
+
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: rootCAs,
+			},
+		},
+		Timeout: timeout,
+	}, nil
 }
 
 func getStack(httpc *http.Client, portainerURL string, apiKey string, stackId int64) (Stack, error) {
