@@ -42,6 +42,8 @@ type RedeploySettings struct {
 
 func main() {
 	var err error
+	var tlsCertData []byte
+
 	var portainerURL = flag.String("url", "", "Portainer URL (env: PORTAINER_URL)")
 	var apiKey = flag.String("access-token", "", "Portainer Access Token (UNSAFE, use environment variable PORTAINER_ACCESS_TOKEN)")
 	var stackId = flag.Int64("stack-id", 0, "Portainer Stack ID (env: PORTAINER_STACK_ID)")
@@ -62,6 +64,11 @@ func main() {
 			panic(err)
 		}
 	}
+	if *portainerURL == "" || *apiKey == "" || *stackId == 0 {
+		flag.PrintDefaults()
+		return
+	}
+
 	if os.Getenv("PORTAINER_HTTP_TIMEOUT") != "" {
 		*timeout, err = time.ParseDuration(os.Getenv("PORTAINER_HTTP_TIMEOUT"))
 		if err != nil {
@@ -71,12 +78,16 @@ func main() {
 	if os.Getenv("PORTAINER_SSL_CERT_FILE") != "" {
 		*tlsCert = os.Getenv("PORTAINER_SSL_CERT_FILE")
 	}
-	if *portainerURL == "" || *apiKey == "" || *stackId == 0 {
-		flag.PrintDefaults()
-		return
+	if os.Getenv("PORTAINER_SSL_CERT") != "" {
+		tlsCertData = []byte(os.Getenv("PORTAINER_SSL_CERT"))
+	} else if *tlsCert != "" {
+		tlsCertData, err = ioutil.ReadFile(*tlsCert)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	httpc, err := newClient(*timeout, *tlsCert)
+	httpc, err := newClient(*timeout, tlsCertData)
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +109,7 @@ func main() {
 	}
 }
 
-func newClient(timeout time.Duration, tlsCert string) (*http.Client, error) {
+func newClient(timeout time.Duration, tlsCert []byte) (*http.Client, error) {
 	rootCAs, err := x509.SystemCertPool()
 	if err != nil {
 		return nil, err
@@ -107,13 +118,8 @@ func newClient(timeout time.Duration, tlsCert string) (*http.Client, error) {
 		rootCAs = x509.NewCertPool()
 	}
 
-	if tlsCert != "" {
-		certs, err := ioutil.ReadFile(tlsCert)
-		if err != nil {
-			return nil, err
-		}
-
-		if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+	if len(tlsCert) > 0 {
+		if ok := rootCAs.AppendCertsFromPEM(tlsCert); !ok {
 			return nil, errors.New("no certificate found to append")
 		}
 	}
