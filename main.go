@@ -45,10 +45,6 @@ func main() {
 	var timeout = flag.Duration("timeout", 120*time.Second, "HTTP timeout (env: PORTAINER_HTTP_TIMEOUT)")
 
 	flag.Parse()
-	if flag.NFlag() == 0 {
-		flag.PrintDefaults()
-		return
-	}
 
 	if os.Getenv("PORTAINER_URL") != "" {
 		*portainerURL = os.Getenv("PORTAINER_URL")
@@ -67,6 +63,10 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+	}
+	if *portainerURL == "" || *apiKey == "" || *stackId == 0 {
+		flag.PrintDefaults()
+		return
 	}
 
 	var httpc = &http.Client{

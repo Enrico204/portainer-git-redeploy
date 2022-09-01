@@ -1,6 +1,6 @@
 BUILDAH_ARGS=--layers=true -f Dockerfile
 BASENAME=portainer-git-redeploy
-VERSION=1
+VERSION=2
 ifeq (${IMAGE_PATH},)
 IMAGE_PATH=docker.io/enrico204/portainer-git-redeploy
 endif
