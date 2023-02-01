@@ -1,23 +1,28 @@
-BUILDAH_ARGS=--layers=true -f Dockerfile
 BASENAME=portainer-git-redeploy
-VERSION=4
+VERSION=5
 ifeq (${IMAGE_PATH},)
 IMAGE_PATH=docker.io/enrico204/portainer-git-redeploy
 endif
 
 image:
-	buildah bud ${BUILDAH_ARGS} --arch amd64 -t ${BASENAME}-amd64:${VERSION}
-	buildah bud ${BUILDAH_ARGS} --arch arm64 --variant v8 -t ${BASENAME}-arm64:${VERSION}
-
-	buildah manifest inspect ${IMAGE_PATH}:${VERSION} | jq -r '.manifests | .[].digest' | xargs -n 1 buildah manifest remove ${IMAGE_PATH}:${VERSION} || true
-	buildah manifest rm ${IMAGE_PATH}:${VERSION} || true
-
+	buildah manifest rm containers-storage:${IMAGE_PATH}:${VERSION} > /dev/null 2>&1 || true
 	buildah manifest create ${IMAGE_PATH}:${VERSION}
-	buildah manifest add ${IMAGE_PATH}:${VERSION} ${BASENAME}-amd64:${VERSION}
-	buildah manifest add ${IMAGE_PATH}:${VERSION} ${BASENAME}-arm64:${VERSION}
+
+	buildah bud --manifest ${IMAGE_PATH}:${VERSION} -f Dockerfile --arch amd64
+	buildah bud --manifest ${IMAGE_PATH}:${VERSION} -f Dockerfile --arch arm64 --variant v8
+
+image-distro:
+	buildah manifest rm containers-storage:${IMAGE_PATH}:${VERSION}-debian > /dev/null 2>&1 || true
+	buildah manifest create ${IMAGE_PATH}:${VERSION}-debian
+
+	buildah bud --manifest ${IMAGE_PATH}:${VERSION}-debian -f Dockerfile.debian --arch amd64
+	buildah bud --manifest ${IMAGE_PATH}:${VERSION}-debian -f Dockerfile.debian --arch arm64 --variant v8
 
 push:
 	buildah manifest push --all --format=docker ${IMAGE_PATH}:${VERSION} docker://${IMAGE_PATH}:${VERSION}
+
+push-distro:
+	buildah manifest push --all --format=docker ${IMAGE_PATH}:${VERSION}-debian docker://${IMAGE_PATH}:${VERSION}-debian
 
 inspect:
 	buildah manifest inspect ${IMAGE_PATH}:${VERSION}

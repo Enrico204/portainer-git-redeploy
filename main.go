@@ -8,7 +8,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -48,7 +47,7 @@ func main() {
 	var apiKey = flag.String("access-token", "", "Portainer Access Token (UNSAFE, use environment variable PORTAINER_ACCESS_TOKEN)")
 	var stackId = flag.Int64("stack-id", 0, "Portainer Stack ID (env: PORTAINER_STACK_ID)")
 	var timeout = flag.Duration("timeout", 120*time.Second, "HTTP timeout (env: PORTAINER_HTTP_TIMEOUT)")
-	var tlsCert = flag.String("tls-cert", "", "Use an additional TLS certificate / CA as trusted (env: PORTAINER_SSL_CERT_FILE)")
+	var tlsCert = flag.String("tls-cert", "", "Use an additional file as trusted TLS certificate / CA (env: PORTAINER_SSL_CERT_FILE)")
 
 	flag.Parse()
 
@@ -66,6 +65,7 @@ func main() {
 	}
 	if *portainerURL == "" || *apiKey == "" || *stackId == 0 {
 		flag.PrintDefaults()
+		os.Exit(1)
 		return
 	}
 
@@ -81,7 +81,7 @@ func main() {
 	if os.Getenv("PORTAINER_SSL_CERT") != "" {
 		tlsCertData = []byte(os.Getenv("PORTAINER_SSL_CERT"))
 	} else if *tlsCert != "" {
-		tlsCertData, err = ioutil.ReadFile(*tlsCert)
+		tlsCertData, err = os.ReadFile(*tlsCert)
 		if err != nil {
 			panic(err)
 		}
